@@ -1,0 +1,13 @@
+<!-- templates/existing_workout.html -->
+
+{% extends "base.html" %}
+{% block content %}
+<h2>Load Existing Workout</h2>
+<form method="POST" enctype="multipart/form-data">
+    <div class="form-group">
+        <label for="workout_file">Upload Workout CSV File</label>
+        <input type="file" class="form-control-file" id="workout_file" name="workout_file" accept=".csv" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Load Workout</button>
+</form>
+{% endblock %}

@@ -1,0 +1,106 @@
+<!-- templates/new_workout.html -->
+
+{% extends "base.html" %}
+{% block content %}
+<h2>Create New Workout</h2>
+<form method="POST">
+    <!-- Workout Name -->
+    <div class="form-group">
+        <label for="workout_name">Workout Name</label>
+        <input type="text" class="form-control" id="workout_name" name="workout_name" required>
+    </div>
+    <!-- Temperature -->
+    <div class="form-group">
+        <label for="temperature">Temperature (°F)</label>
+        <input type="number" class="form-control" id="temperature" name="temperature">
+    </div>
+    <!-- Wind Direction -->
+    <div class="form-group">
+        <label for="wind_direction">Wind Direction</label><br>
+        <canvas id="windCanvas" width="200" height="200" style="background-color: #f8f9fa;"></canvas>
+        <input type="hidden" id="wind_direction" name="wind_direction">
+    </div>
+    <!-- Field Type -->
+    <div class="form-group">
+        <label>Field Type</label><br>
+        <div class="btn-group btn-group-toggle" data-toggle="buttons">
+            <label class="btn btn-outline-primary">
+                <input type="radio" name="field_type" value="High School" autocomplete="off" required> High School
+            </label>
+            <label class="btn btn-outline-primary">
+                <input type="radio" name="field_type" value="College" autocomplete="off" required> College
+            </label>
+        </div>
+    </div>
+    <!-- Field Name -->
+    <div class="form-group">
+        <label for="field_name">Field Name</label>
+        <input type="text" class="form-control" id="field_name" name="field_name">
+    </div>
+    <!-- Kickers -->
+    <div class="form-group">
+        <label for="kickers">Kickers (comma-separated)</label>
+        <input type="text" class="form-control" id="kickers" name="kickers" required>
+    </div>
+    <!-- Submit Button -->
+    <button type="submit" class="btn btn-primary">Start Workout</button>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Wind Direction Selector
+    const canvas = document.getElementById('windCanvas');
+    const ctx = canvas.getContext('2d');
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    let angle = 0;
+
+    function drawArrow(angle) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(angle);
+        ctx.beginPath();
+        ctx.moveTo(0, -50);
+        ctx.lineTo(-10, 0);
+        ctx.lineTo(10, 0);
+        ctx.closePath();
+        ctx.fillStyle = '#007bff';
+        ctx.fill();
+        ctx.restore();
+    }
+
+    drawArrow(angle);
+
+    canvas.addEventListener('mousedown', startDrag);
+    canvas.addEventListener('touchstart', startDrag);
+
+    function startDrag(e) {
+        e.preventDefault();
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('touchmove', drag);
+        document.addEventListener('mouseup', endDrag);
+        document.addEventListener('touchend', endDrag);
+    }
+
+    function drag(e) {
+        e.preventDefault();
+        let rect = canvas.getBoundingClientRect();
+        let x = (e.clientX || e.touches[0].clientX) - rect.left - centerX;
+        let y = (e.clientY || e.touches[0].clientY) - rect.top - centerY;
+        angle = Math.atan2(y, x) + Math.PI / 2;
+        drawArrow(angle);
+        let degrees = (angle * (180 / Math.PI) + 360) % 360;
+        document.getElementById('wind_direction').value = degrees.toFixed(2);
+    }
+
+    function endDrag(e) {
+        e.preventDefault();
+        document.removeEventListener('mousemove', drag);
+        document.removeEventListener('touchmove', drag);
+        document.removeEventListener('mouseup', endDrag);
+        document.removeEventListener('touchend', endDrag);
+    }
+</script>
+{% endblock %}
