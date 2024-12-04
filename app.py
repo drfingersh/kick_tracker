@@ -268,5 +268,6 @@ def edit_kick(kick_number):
         kick = kicks[kick_number]
         return render_template('edit_kick.html', kick=kick, kick_number=kick_number)
 
-if __name__ == '__main__':
-    app.run(debug=True)
+##if __name__ == '__main__':
+   # app.run(debug=True)
+#
