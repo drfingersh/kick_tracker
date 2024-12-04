@@ -1,0 +1,668 @@
+<!-- templates/kick_track.html -->
+
+{% extends "base.html" %}
+{% block content %}
+<h2>Kick Tracking</h2>
+
+<!-- Save Workout Button -->
+<button type="button" class="btn btn-success float-right mr-2" onclick="saveAndRedirect()">Save Workout</button>
+<button type="button" class="btn btn-secondary float-right mr-2" data-toggle="modal" data-target="#kickListModal">
+    Menu
+</button>
+
+<form method="POST">
+    <!-- Kick Type Buttons -->
+    <div class="form-group">
+        <label>Kick Type</label><br>
+        <div class="btn-group btn-group-toggle" data-toggle="buttons">
+            <label class="btn btn-outline-primary {% if kick_type == 'Field Goal' %}active{% endif %}">
+                <input type="radio" name="kick_type" value="Field Goal" autocomplete="off" onchange="this.form.submit()" {% if kick_type == 'Field Goal' %}checked{% endif %}> Field Goal
+            </label>
+            <label class="btn btn-outline-primary {% if kick_type == 'Kickoff' %}active{% endif %}">
+                <input type="radio" name="kick_type" value="Kickoff" autocomplete="off" onchange="this.form.submit()" {% if kick_type == 'Kickoff' %}checked{% endif %}> Kickoff
+            </label>
+            <label class="btn btn-outline-primary {% if kick_type == 'Punt' %}active{% endif %}">
+                <input type="radio" name="kick_type" value="Punt" autocomplete="off" onchange="this.form.submit()" {% if kick_type == 'Punt' %}checked{% endif %}> Punt
+            </label>
+        </div>
+    </div>
+</form>
+
+{% if kick_type == 'Field Goal' %}
+    <!-- Field Goal Form -->
+    <form method="POST" action="{{ url_for('save_kick') }}">
+        <!-- Include hidden input for kick type -->
+        <input type="hidden" name="kick_type" value="Field Goal">
+        <!-- Kicker Selection Buttons -->
+        <div class="form-group">
+            <label>Kicker</label><br>
+            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                {% for kicker in session['kickers'] %}
+                <label class="btn btn-outline-primary">
+                    <input type="radio" name="kicker" value="{{ kicker }}" autocomplete="off" required> {{ kicker }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <!-- Position Selection Buttons -->
+        <div class="form-group">
+            <label>Position</label><br>
+            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                {% set positions = ['Left', 'Left Middle', 'Middle', 'Right Middle', 'Right'] %}
+                {% for position in positions %}
+                <label class="btn btn-outline-primary">
+                    <input type="radio" name="position" value="{{ position }}" autocomplete="off" required> {{ position }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <!-- Yard Line Input with Keypad -->
+        <div class="form-group">
+            <label>Yard Line</label><br>
+            <div class="input-group">
+                <input type="text" class="form-control" id="yard_line_display" name="yard_line_display" value="" readonly required>
+                <input type="hidden" id="yard_line" name="yard_line" value="" required>
+                <div class="input-group-append">
+                    <button type="button" class="btn btn-outline-secondary" onclick="openKeypad()">Enter Yard Line</button>
+                </div>
+            </div>
+        </div>
+        <!-- Stopwatch -->
+        <div class="form-group">
+            <label>Op Time</label><br>
+            <span id="timer_display">0.00 s</span><br>
+            <button type="button" id="timer_button" class="btn btn-secondary" onclick="startStopwatch('timer_display', 'timer_button', 'time_elapsed')">Start</button>
+            <button type="button" class="btn btn-danger" onclick="resetStopwatch('timer_display', 'timer_button', 'time_elapsed')">Reset</button>
+            <input type="hidden" name="time_elapsed" id="time_elapsed">
+        </div>
+        <!-- Result Selection Buttons -->
+        <div class="form-group">
+            <label>Result</label><br>
+            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                <label class="btn btn-outline-primary">
+                    <input type="radio" name="result" value="Good" autocomplete="off" required> Good
+                </label>
+                <label class="btn btn-outline-primary">
+                    <input type="radio" name="result" value="No Good" autocomplete="off" required> No Good
+                </label>
+            </div>
+        </div>
+        <!-- Navigation Buttons -->
+        <button type="submit" name="action" value="previous" class="btn btn-warning">Previous Kick</button>
+        <button type="submit" name="action" value="next" class="btn btn-primary">Next Kick</button>
+    </form>
+
+    <!-- Keypad Modal for Yard Line (Field Goal) -->
+    <div class="modal fade" id="keypadModal" tabindex="-1" aria-labelledby="keypadModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-light">
+          <div class="modal-header">
+            <h5 class="modal-title" id="keypadModalLabel">Enter Yard Line</h5>
+            <button type="button" class="close text-light" data-dismiss="modal" aria-label="Close" onclick="clearKeypad()">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body text-center">
+            <input type="text" class="form-control mb-3 text-center" id="keypadInput" value="" readonly>
+            <div class="btn-group btn-group-lg d-flex flex-wrap" role="group">
+              <!-- Negative Sign Button -->
+              <button type="button" class="btn btn-outline-light m-1 keypad-btn" onclick="pressKey('-')">-</button>
+              <!-- Number Buttons -->
+              {% for num in range(1, 10) %}
+              <button type="button" class="btn btn-outline-light m-1 keypad-btn" onclick="pressKey('{{ num }}')">{{ num }}</button>
+              {% endfor %}
+              <!-- Zero Button -->
+              <button type="button" class="btn btn-outline-light m-1 keypad-btn" onclick="pressKey('0')">0</button>
+              <!-- Delete Button -->
+              <button type="button" class="btn btn-outline-light m-1 keypad-btn" onclick="deleteKey()">&larr;</button>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="clearKeypad()">Clear</button>
+            <button type="button" class="btn btn-primary" onclick="confirmKeypad()">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+{% elif kick_type == 'Kickoff' %}
+    <!-- Kickoff Form -->
+    <form method="POST" action="{{ url_for('save_kick') }}">
+        <input type="hidden" name="kick_type" value="Kickoff">
+        <!-- Kicker Selection Buttons -->
+        <div class="form-group">
+            <label>Kicker</label><br>
+            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                {% for kicker in session['kickers'] %}
+                <label class="btn btn-outline-primary">
+                    <input type="radio" name="kicker" value="{{ kicker }}" autocomplete="off" required> {{ kicker }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <!-- Yard Line Selection Buttons (35 or 40) -->
+        <div class="form-group">
+            <label>Yard Line</label><br>
+            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                <label class="btn btn-outline-primary">
+                    <input type="radio" name="yard_line" value="35" autocomplete="off" required> 35
+                </label>
+                <label class="btn btn-outline-primary">
+                    <input type="radio" name="yard_line" value="40" autocomplete="off" required> 40
+                </label>
+            </div>
+        </div>
+        <!-- Position Selection Buttons -->
+        <div class="form-group">
+            <label>Position</label><br>
+            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                {% set positions = ['Left', 'Left Middle', 'Middle', 'Right Middle', 'Right'] %}
+                {% for position in positions %}
+                <label class="btn btn-outline-primary">
+                    <input type="radio" name="position" value="{{ position }}" autocomplete="off" required> {{ position }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <!-- Result Yard Line Input with Keypad -->
+        <div class="form-group">
+            <label>Result Yard Line</label><br>
+            <div class="input-group">
+                <input type="text" class="form-control" id="result_yard_line_display" name="result_yard_line_display" value="" readonly required>
+                <input type="hidden" id="result_yard_line" name="result_yard_line" value="" required>
+                <div class="input-group-append">
+                    <button type="button" class="btn btn-outline-secondary" onclick="openResultYardLineKeypad()">Enter Result Yard Line</button>
+                </div>
+            </div>
+        </div>
+        <!-- Landing Location Selection Buttons -->
+        <div class="form-group">
+            <label>Landing Location</label><br>
+            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                {% set locations = ['Out of Bounds Left', 'Left Numbers', 'Left Hash', 'Middle', 'Right Hash', 'Right Numbers', 'Out of Bounds Right'] %}
+                {% for location in locations %}
+                <label class="btn btn-outline-primary">
+                    <input type="radio" name="landing_location" value="{{ location }}" autocomplete="off" required> {{ location }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <!-- Stopwatch -->
+        <div class="form-group">
+            <label>Hang Time</label><br>
+            <span id="kickoff_timer_display">0.00 s</span><br>
+            <button type="button" id="kickoff_timer_button" class="btn btn-secondary" onclick="startStopwatch('kickoff_timer_display', 'kickoff_timer_button', 'time_elapsed')">Start</button>
+            <button type="button" class="btn btn-danger" onclick="resetStopwatch('kickoff_timer_display', 'kickoff_timer_button', 'time_elapsed')">Reset</button>
+            <input type="hidden" name="time_elapsed" id="time_elapsed">
+        </div>
+        <!-- Navigation Buttons -->
+        <button type="submit" name="action" value="previous" class="btn btn-warning">Previous Kick</button>
+        <button type="submit" name="action" value="next" class="btn btn-primary">Next Kick</button>
+    </form>
+
+    <!-- Keypad Modal for Result Yard Line (Kickoff) -->
+    <div class="modal fade" id="resultYardLineKeypadModal" tabindex="-1" aria-labelledby="resultYardLineKeypadModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-light">
+          <div class="modal-header">
+            <h5 class="modal-title" id="resultYardLineKeypadModalLabel">Enter Result Yard Line</h5>
+            <button type="button" class="close text-light" data-dismiss="modal" aria-label="Close" onclick="clearResultYardLineKeypad()">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body text-center">
+            <input type="text" class="form-control mb-3 text-center" id="resultYardLineKeypadInput" value="" readonly>
+            <div class="btn-group btn-group-lg d-flex flex-wrap" role="group">
+              <!-- Negative Sign Button -->
+              <button type="button" class="btn btn-outline-light m-1 keypad-btn" onclick="pressResultYardLineKey('-')">-</button>
+              <!-- Number Buttons -->
+              {% for num in range(1, 10) %}
+              <button type="button" class="btn btn-outline-light m-1 keypad-btn" onclick="pressResultYardLineKey('{{ num }}')">{{ num }}</button>
+              {% endfor %}
+              <!-- Zero Button -->
+              <button type="button" class="btn btn-outline-light m-1 keypad-btn" onclick="pressResultYardLineKey('0')">0</button>
+              <!-- Delete Button -->
+              <button type="button" class="btn btn-outline-light m-1 keypad-btn" onclick="deleteResultYardLineKey()">&larr;</button>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="clearResultYardLineKeypad()">Clear</button>
+            <button type="button" class="btn btn-primary" onclick="confirmResultYardLineKeypad()">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+{% elif kick_type == 'Punt' %}
+    <!-- Punt Form -->
+    <form method="POST" action="{{ url_for('save_kick') }}">
+        <input type="hidden" name="kick_type" value="Punt">
+        <!-- Kicker Selection Buttons -->
+        <div class="form-group">
+            <label>Kicker</label><br>
+            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                {% for kicker in session['kickers'] %}
+                <label class="btn btn-outline-primary">
+                    <input type="radio" name="kicker" value="{{ kicker }}" autocomplete="off" required> {{ kicker }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <!-- Yard Line Kicked From Input with Keypad -->
+        <div class="form-group">
+            <label>Yard Line Kicked From</label><br>
+            <div class="input-group">
+                <input type="text" class="form-control" id="kick_yard_line_display" name="kick_yard_line_display" value="" readonly required>
+                <input type="hidden" id="kick_yard_line" name="kick_yard_line" value="" required>
+                <div class="input-group-append">
+                    <button type="button" class="btn btn-outline-secondary" onclick="openKickYardLineKeypad()">Enter Yard Line</button>
+                </div>
+            </div>
+        </div>
+        <!-- Location Kicked From Selection Buttons -->
+        <div class="form-group">
+            <label>Location Kicked From</label><br>
+            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                {% set locations = ['Left', 'Left Middle', 'Middle', 'Right Middle', 'Right'] %}
+                {% for location in locations %}
+                <label class="btn btn-outline-primary">
+                    <input type="radio" name="kick_location" value="{{ location }}" autocomplete="off" required> {{ location }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <!-- Yard Line Landed Input with Keypad -->
+        <div class="form-group">
+            <label>Yard Line Landed</label><br>
+            <div class="input-group">
+                <input type="text" class="form-control" id="landed_yard_line_display" name="landed_yard_line_display" value="" readonly required>
+                <input type="hidden" id="landed_yard_line" name="landed_yard_line" value="" required>
+                <div class="input-group-append">
+                    <button type="button" class="btn btn-outline-secondary" onclick="openLandedYardLineKeypad()">Enter Yard Line</button>
+                </div>
+            </div>
+        </div>
+        <!-- Landed Location Selection Buttons -->
+        <div class="form-group">
+            <label>Landed Location</label><br>
+            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                {% set locations = ['Out of Bounds Left', 'Left Numbers', 'Left Hash', 'Middle', 'Right Hash', 'Right Numbers', 'Out of Bounds Right'] %}
+                {% for location in locations %}
+                <label class="btn btn-outline-primary">
+                    <input type="radio" name="landed_location" value="{{ location }}" autocomplete="off" required> {{ location }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <!-- Stopwatch with Two Timers (Op Time and Hang Time) -->
+        <div class="form-group">
+            <label>Stopwatch</label><br>
+            <span id="op_time_display">Op Time: 0.00 s</span><br>
+            <span id="hang_time_display">Hang Time: 0.00 s</span><br>
+            <button type="button" id="op_time_button" class="btn btn-secondary" onclick="startOpTime()">Start Op Time</button>
+            <button type="button" id="hang_time_button" class="btn btn-secondary" onclick="startHangTime()" disabled>Start Hang Time</button>
+            <button type="button" id="stop_hang_time_button" class="btn btn-secondary" onclick="stopHangTime()" disabled>Stop Hang Time</button>
+            <button type="button" class="btn btn-danger" onclick="resetPuntTimers()">Reset</button>
+            <input type="hidden" name="op_time" id="op_time">
+            <input type="hidden" name="hang_time" id="hang_time">
+        </div>
+        <!-- Navigation Buttons -->
+        <button type="submit" name="action" value="previous" class="btn btn-warning">Previous Kick</button>
+        <button type="submit" name="action" value="next" class="btn btn-primary">Next Kick</button>
+    </form>
+
+    <!-- Keypad Modal for Kick Yard Line (Punt) -->
+    <div class="modal fade" id="kickYardLineKeypadModal" tabindex="-1" aria-labelledby="kickYardLineKeypadModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-light">
+          <div class="modal-header">
+            <h5 class="modal-title" id="kickYardLineKeypadModalLabel">Enter Kick Yard Line</h5>
+            <button type="button" class="close text-light" data-dismiss="modal" aria-label="Close" onclick="clearKickYardLineKeypad()">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body text-center">
+            <input type="text" class="form-control mb-3 text-center" id="kickYardLineKeypadInput" value="" readonly>
+            <div class="btn-group btn-group-lg d-flex flex-wrap" role="group">
+              <!-- Negative Sign Button -->
+              <button type="button" class="btn btn-outline-light m-1 keypad-btn" onclick="pressKickYardLineKey('-')">-</button>
+              <!-- Number Buttons -->
+              {% for num in range(1, 10) %}
+              <button type="button" class="btn btn-outline-light m-1 keypad-btn" onclick="pressKickYardLineKey('{{ num }}')">{{ num }}</button>
+              {% endfor %}
+              <!-- Zero Button -->
+              <button type="button" class="btn btn-outline-light m-1 keypad-btn" onclick="pressKickYardLineKey('0')">0</button>
+              <!-- Delete Button -->
+              <button type="button" class="btn btn-outline-light m-1 keypad-btn" onclick="deleteKickYardLineKey()">&larr;</button>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="clearKickYardLineKeypad()">Clear</button>
+            <button type="button" class="btn btn-primary" onclick="confirmKickYardLineKeypad()">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Keypad Modal for Landed Yard Line (Punt) -->
+    <div class="modal fade" id="landedYardLineKeypadModal" tabindex="-1" aria-labelledby="landedYardLineKeypadModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-light">
+          <div class="modal-header">
+            <h5 class="modal-title" id="landedYardLineKeypadModalLabel">Enter Landed Yard Line</h5>
+            <button type="button" class="close text-light" data-dismiss="modal" aria-label="Close" onclick="clearLandedYardLineKeypad()">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body text-center">
+            <input type="text" class="form-control mb-3 text-center" id="landedYardLineKeypadInput" value="" readonly>
+            <div class="btn-group btn-group-lg d-flex flex-wrap" role="group">
+              <!-- Negative Sign Button -->
+              <button type="button" class="btn btn-outline-light m-1 keypad-btn" onclick="pressLandedYardLineKey('-')">-</button>
+              <!-- Number Buttons -->
+              {% for num in range(1, 10) %}
+              <button type="button" class="btn btn-outline-light m-1 keypad-btn" onclick="pressLandedYardLineKey('{{ num }}')">{{ num }}</button>
+              {% endfor %}
+              <!-- Zero Button -->
+              <button type="button" class="btn btn-outline-light m-1 keypad-btn" onclick="pressLandedYardLineKey('0')">0</button>
+              <!-- Delete Button -->
+              <button type="button" class="btn btn-outline-light m-1 keypad-btn" onclick="deleteLandedYardLineKey()">&larr;</button>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="clearLandedYardLineKeypad()">Clear</button>
+            <button type="button" class="btn btn-primary" onclick="confirmLandedYardLineKeypad()">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+{% endif %}
+
+<!-- Kick List Modal -->
+<div class="modal fade" id="kickListModal" tabindex="-1" aria-labelledby="kickListModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content bg-dark text-light">
+      <div class="modal-header">
+        <h5 class="modal-title" id="kickListModalLabel">Kicks List</h5>
+        <button type="button" class="close text-light" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <ul class="list-group">
+          {% for kick in kicks %}
+          <li class="list-group-item bg-dark">
+            <a href="{{ url_for('edit_kick', kick_number=loop.index0) }}" class="text-light">
+                {{ kick['Kick Type'] }} - Kick {{ loop.index }}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Activate button styles when selected
+    $(document).ready(function(){
+        $('.btn-group-toggle .btn input[type="radio"]').each(function(){
+            if($(this).is(':checked')){
+                $(this).parent().addClass('active');
+            }
+        });
+        $('.btn-group-toggle .btn').on('click', function(){
+            $(this).siblings().removeClass('active');
+            $(this).addClass('active');
+        });
+    });
+
+    // Function to save and redirect
+    function saveAndRedirect() {
+        // Create a hidden iframe to download the file
+        var iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = "{{ url_for('save_workout') }}";
+        document.body.appendChild(iframe);
+
+        // Redirect to home after a short delay
+        setTimeout(function() {
+            window.location.href = "{{ url_for('home') }}";
+        }, 1000); // Adjust the delay as needed
+    }
+
+    // Keypad functions for Yard Line Input (Field Goal)
+    function openKeypad() {
+        $('#keypadModal').modal('show');
+    }
+
+    function pressKey(key) {
+        let currentValue = $('#keypadInput').val();
+        if (key === '-') {
+            if (currentValue.startsWith('-')) {
+                // Negative sign already exists, do nothing
+                return;
+            } else {
+                $('#keypadInput').val('-' + currentValue);
+            }
+        } else {
+            $('#keypadInput').val(currentValue + key);
+        }
+    }
+
+    function deleteKey() {
+        let currentValue = $('#keypadInput').val();
+        $('#keypadInput').val(currentValue.slice(0, -1));
+    }
+
+    function clearKeypad() {
+        $('#keypadInput').val('');
+    }
+
+    function confirmKeypad() {
+        let enteredValue = $('#keypadInput').val();
+        $('#yard_line_display').val(enteredValue);
+        $('#yard_line').val(enteredValue);
+        $('#keypadModal').modal('hide');
+    }
+
+    // Keypad functions for Result Yard Line (Kickoff)
+    function openResultYardLineKeypad() {
+        $('#resultYardLineKeypadModal').modal('show');
+    }
+
+    function pressResultYardLineKey(key) {
+        let currentValue = $('#resultYardLineKeypadInput').val();
+        if (key === '-') {
+            if (currentValue.startsWith('-')) {
+                return;
+            } else {
+                $('#resultYardLineKeypadInput').val('-' + currentValue);
+            }
+        } else {
+            $('#resultYardLineKeypadInput').val(currentValue + key);
+        }
+    }
+
+    function deleteResultYardLineKey() {
+        let currentValue = $('#resultYardLineKeypadInput').val();
+        $('#resultYardLineKeypadInput').val(currentValue.slice(0, -1));
+    }
+
+    function clearResultYardLineKeypad() {
+        $('#resultYardLineKeypadInput').val('');
+    }
+
+    function confirmResultYardLineKeypad() {
+        let enteredValue = $('#resultYardLineKeypadInput').val();
+        $('#result_yard_line_display').val(enteredValue);
+        $('#result_yard_line').val(enteredValue);
+        $('#resultYardLineKeypadModal').modal('hide');
+    }
+
+    // Keypad functions for Kick Yard Line (Punt)
+    function openKickYardLineKeypad() {
+        $('#kickYardLineKeypadModal').modal('show');
+    }
+
+    function pressKickYardLineKey(key) {
+        let currentValue = $('#kickYardLineKeypadInput').val();
+        if (key === '-') {
+            if (currentValue.startsWith('-')) {
+                return;
+            } else {
+                $('#kickYardLineKeypadInput').val('-' + currentValue);
+            }
+        } else {
+            $('#kickYardLineKeypadInput').val(currentValue + key);
+        }
+    }
+
+    function deleteKickYardLineKey() {
+        let currentValue = $('#kickYardLineKeypadInput').val();
+        $('#kickYardLineKeypadInput').val(currentValue.slice(0, -1));
+    }
+
+    function clearKickYardLineKeypad() {
+        $('#kickYardLineKeypadInput').val('');
+    }
+
+    function confirmKickYardLineKeypad() {
+        let enteredValue = $('#kickYardLineKeypadInput').val();
+        $('#kick_yard_line_display').val(enteredValue);
+        $('#kick_yard_line').val(enteredValue);
+        $('#kickYardLineKeypadModal').modal('hide');
+    }
+
+    // Keypad functions for Landed Yard Line (Punt)
+    function openLandedYardLineKeypad() {
+        $('#landedYardLineKeypadModal').modal('show');
+    }
+
+    function pressLandedYardLineKey(key) {
+        let currentValue = $('#landedYardLineKeypadInput').val();
+        if (key === '-') {
+            if (currentValue.startsWith('-')) {
+                return;
+            } else {
+                $('#landedYardLineKeypadInput').val('-' + currentValue);
+            }
+        } else {
+            $('#landedYardLineKeypadInput').val(currentValue + key);
+        }
+    }
+
+    function deleteLandedYardLineKey() {
+        let currentValue = $('#landedYardLineKeypadInput').val();
+        $('#landedYardLineKeypadInput').val(currentValue.slice(0, -1));
+    }
+
+    function clearLandedYardLineKeypad() {
+        $('#landedYardLineKeypadInput').val('');
+    }
+
+    function confirmLandedYardLineKeypad() {
+        let enteredValue = $('#landedYardLineKeypadInput').val();
+        $('#landed_yard_line_display').val(enteredValue);
+        $('#landed_yard_line').val(enteredValue);
+        $('#landedYardLineKeypadModal').modal('hide');
+    }
+
+    // Stopwatch functions
+    let timerInterval;
+    let elapsedTime = 0;
+
+    function startStopwatch(displayId, buttonId, inputId) {
+        const display = document.getElementById(displayId);
+        const button = document.getElementById(buttonId);
+        const input = document.getElementById(inputId);
+
+        if (button.innerText === 'Start') {
+            button.innerText = 'Stop';
+            const startTime = Date.now() - (input.value ? input.value * 1000 : 0);
+            timerInterval = setInterval(() => {
+                elapsedTime = Date.now() - startTime;
+                const timeInSeconds = (elapsedTime / 1000).toFixed(2);
+                display.innerText = timeInSeconds + ' s';
+            }, 10);
+        } else {
+            button.innerText = 'Start';
+            clearInterval(timerInterval);
+            const finalTime = (elapsedTime / 1000).toFixed(2);
+            input.value = finalTime;
+        }
+    }
+
+    function resetStopwatch(displayId, buttonId, inputId) {
+        clearInterval(timerInterval);
+        elapsedTime = 0;
+        document.getElementById(displayId).innerText = '0.00 s';
+        document.getElementById(buttonId).innerText = 'Start';
+        document.getElementById(inputId).value = '';
+    }
+
+    // Punt Timers
+    let opTimerInterval;
+    let hangTimerInterval;
+    let opElapsedTime = 0;
+    let hangElapsedTime = 0;
+
+    function startOpTime() {
+        $('#op_time_button').prop('disabled', true);
+        $('#hang_time_button').prop('disabled', false);
+        const startTime = Date.now();
+        opTimerInterval = setInterval(() => {
+            opElapsedTime = Date.now() - startTime;
+            const timeInSeconds = (opElapsedTime / 1000).toFixed(2);
+            $('#op_time_display').text('Op Time: ' + timeInSeconds + ' s');
+        }, 10);
+    }
+
+    function startHangTime() {
+        clearInterval(opTimerInterval);
+        $('#hang_time_button').prop('disabled', true);
+        $('#stop_hang_time_button').prop('disabled', false);
+        const startTime = Date.now();
+        hangTimerInterval = setInterval(() => {
+            hangElapsedTime = Date.now() - startTime;
+            const timeInSeconds = (hangElapsedTime / 1000).toFixed(2);
+            $('#hang_time_display').text('Hang Time: ' + timeInSeconds + ' s');
+        }, 10);
+    }
+
+    function stopHangTime() {
+        clearInterval(hangTimerInterval);
+        $('#stop_hang_time_button').prop('disabled', true);
+        const finalHangTime = (hangElapsedTime / 1000).toFixed(2);
+        $('#hang_time').val(finalHangTime);
+    }
+
+    function resetPuntTimers() {
+        clearInterval(opTimerInterval);
+        clearInterval(hangTimerInterval);
+        opElapsedTime = 0;
+        hangElapsedTime = 0;
+        $('#op_time_display').text('Op Time: 0.00 s');
+        $('#hang_time_display').text('Hang Time: 0.00 s');
+        $('#op_time_button').prop('disabled', false);
+        $('#hang_time_button').prop('disabled', true);
+        $('#stop_hang_time_button').prop('disabled', true);
+        $('#op_time').val('');
+        $('#hang_time').val('');
+    }
+
+    // When the form is submitted, capture the times
+    $('form').on('submit', function() {
+        if ($('#op_time').length) {
+            $('#op_time').val((opElapsedTime / 1000).toFixed(2));
+        }
+        if ($('#hang_time').length && $('#hang_time').val() === '') {
+            $('#hang_time').val((hangElapsedTime / 1000).toFixed(2));
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,162 @@
+<!-- templates/edit_kick.html -->
+
+{% extends "base.html" %}
+{% block content %}
+<h2>Edit Kick</h2>
+
+<form method="POST" action="{{ url_for('edit_kick', kick_number=kick_number) }}">
+    <!-- Kick Type -->
+    <div class="form-group">
+        <label>Kick Type</label><br>
+        <div class="btn-group btn-group-toggle" data-toggle="buttons">
+            {% for kt in ['Field Goal', 'Kickoff', 'Punt'] %}
+            <label class="btn btn-outline-primary {% if kick['Kick Type'] == kt %}active{% endif %}">
+                <input type="radio" name="kick_type" value="{{ kt }}" autocomplete="off" {% if kick['Kick Type'] == kt %}checked{% endif %}> {{ kt }}
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+    <!-- Kicker -->
+    <div class="form-group">
+        <label>Kicker</label><br>
+        <div class="btn-group btn-group-toggle" data-toggle="buttons">
+            {% for kicker in session['kickers'] %}
+            <label class="btn btn-outline-primary {% if kick['Kicker'] == kicker %}active{% endif %}">
+                <input type="radio" name="kicker" value="{{ kicker }}" autocomplete="off" {% if kick['Kicker'] == kicker %}checked{% endif %}> {{ kicker }}
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Conditional Fields Based on Kick Type -->
+    {% if kick['Kick Type'] == 'Field Goal' %}
+        <!-- Position -->
+        <div class="form-group">
+            <label>Position</label><br>
+            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                {% set positions = ['Left', 'Left Middle', 'Middle', 'Right Middle', 'Right'] %}
+                {% for position in positions %}
+                <label class="btn btn-outline-primary {% if kick['Field Goal_Position'] == position %}active{% endif %}">
+                    <input type="radio" name="position" value="{{ position }}" autocomplete="off" {% if kick['Field Goal_Position'] == position %}checked{% endif %}> {{ position }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <!-- Yard Line -->
+        <div class="form-group">
+            <label>Yard Line</label>
+            <input type="number" class="form-control" name="yard_line" value="{{ kick['Field Goal_Yard Line'] }}" required>
+        </div>
+        <!-- Op Time -->
+        <div class="form-group">
+            <label>Op Time</label>
+            <input type="text" class="form-control" name="time_elapsed" value="{{ kick['Field Goal_Op Time'] }}">
+        </div>
+        <!-- Result -->
+        <div class="form-group">
+            <label>Result</label><br>
+            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                {% for result in ['Good', 'No Good'] %}
+                <label class="btn btn-outline-primary {% if kick['Field Goal_Result'] == result %}active{% endif %}">
+                    <input type="radio" name="result" value="{{ result }}" autocomplete="off" {% if kick['Field Goal_Result'] == result %}checked{% endif %}> {{ result }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    {% elif kick['Kick Type'] == 'Kickoff' %}
+        <!-- Yard Line -->
+        <div class="form-group">
+            <label>Yard Line</label><br>
+            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                {% for yl in ['35', '40'] %}
+                <label class="btn btn-outline-primary {% if kick['Kickoff_Yard Line'] == yl %}active{% endif %}">
+                    <input type="radio" name="yard_line" value="{{ yl }}" autocomplete="off" {% if kick['Kickoff_Yard Line'] == yl %}checked{% endif %}> {{ yl }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <!-- Position -->
+        <div class="form-group">
+            <label>Position</label><br>
+            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                {% set positions = ['Left', 'Left Middle', 'Middle', 'Right Middle', 'Right'] %}
+                {% for position in positions %}
+                <label class="btn btn-outline-primary {% if kick['Kickoff_Position'] == position %}active{% endif %}">
+                    <input type="radio" name="position" value="{{ position }}" autocomplete="off" {% if kick['Kickoff_Position'] == position %}checked{% endif %}> {{ position }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <!-- Result Yard Line -->
+        <div class="form-group">
+            <label>Result Yard Line</label>
+            <input type="number" class="form-control" name="result_yard_line" value="{{ kick['Kickoff_Result Yard Line'] }}" required>
+        </div>
+        <!-- Landing Location -->
+        <div class="form-group">
+            <label>Landing Location</label><br>
+            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                {% set locations = ['Out of Bounds Left', 'Left Numbers', 'Left Hash', 'Middle', 'Right Hash', 'Right Numbers', 'Out of Bounds Right'] %}
+                {% for location in locations %}
+                <label class="btn btn-outline-primary {% if kick['Kickoff_Landing Location'] == location %}active{% endif %}">
+                    <input type="radio" name="landing_location" value="{{ location }}" autocomplete="off" {% if kick['Kickoff_Landing Location'] == location %}checked{% endif %}> {{ location }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <!-- Hang Time -->
+        <div class="form-group">
+            <label>Hang Time</label>
+            <input type="text" class="form-control" name="time_elapsed" value="{{ kick['Kickoff_Hang Time'] }}">
+        </div>
+    {% elif kick['Kick Type'] == 'Punt' %}
+        <!-- Kick Yard Line -->
+        <div class="form-group">
+            <label>Kick Yard Line</label>
+            <input type="number" class="form-control" name="kick_yard_line" value="{{ kick['Punt_Kick Yard Line'] }}" required>
+        </div>
+        <!-- Kick Location -->
+        <div class="form-group">
+            <label>Kick Location</label><br>
+            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                {% set locations = ['Left', 'Left Middle', 'Middle', 'Right Middle', 'Right'] %}
+                {% for location in locations %}
+                <label class="btn btn-outline-primary {% if kick['Punt_Kick Location'] == location %}active{% endif %}">
+                    <input type="radio" name="kick_location" value="{{ location }}" autocomplete="off" {% if kick['Punt_Kick Location'] == location %}checked{% endif %}> {{ location }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <!-- Landed Yard Line -->
+        <div class="form-group">
+            <label>Landed Yard Line</label>
+            <input type="number" class="form-control" name="landed_yard_line" value="{{ kick['Punt_Landed Yard Line'] }}" required>
+        </div>
+        <!-- Landing Location -->
+        <div class="form-group">
+            <label>Landing Location</label><br>
+            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                {% set locations = ['Out of Bounds Left', 'Left Numbers', 'Left Hash', 'Middle', 'Right Hash', 'Right Numbers', 'Out of Bounds Right'] %}
+                {% for location in locations %}
+                <label class="btn btn-outline-primary {% if kick['Punt_Landing Location'] == location %}active{% endif %}">
+                    <input type="radio" name="landed_location" value="{{ location }}" autocomplete="off" {% if kick['Punt_Landing Location'] == location %}checked{% endif %}> {{ location }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <!-- Op Time -->
+        <div class="form-group">
+            <label>Op Time</label>
+            <input type="text" class="form-control" name="op_time" value="{{ kick['Punt_Op Time'] }}">
+        </div>
+        <!-- Hang Time -->
+        <div class="form-group">
+            <label>Hang Time</label>
+            <input type="text" class="form-control" name="hang_time" value="{{ kick['Punt_Hang Time'] }}">
+        </div>
+    {% endif %}
+    <!-- Submit Button -->
+    <button type="submit" class="btn btn-primary">Save Changes</button>
+    <a href="{{ url_for('kick_track') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}
